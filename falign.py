@@ -6,6 +6,12 @@ import re
 
 
 class FalignCommand(sublime_plugin.TextCommand):
+	def get_indent_text(self, view, indent):
+		if int(view.settings().get("translate_tabs_to_spaces", False)):
+			return ' '*(int(view.settings().get("tab_size", 8))*indent)
+		else:
+			return '\t'*indent
+
 	def get_indent_level(self, view, line_string):
 		tab_size = int(view.settings().get("tab_size", 8))
 		space_count = 0
@@ -51,10 +57,10 @@ class FalignCommand(sublime_plugin.TextCommand):
 
 		pattern = re.compile(r"[^\w]")
 		match = pattern.search(main_string)
-		if not match: return False, None, None
+		if not match: return False, None, None, None
 
 		main_keys = self.get_line_key(view, main_string)
-		if not main_keys: return False, None, None
+		if not main_keys: return False, None, None, None
 
 		main_head = main_string[:match.end(0)]
 
@@ -77,7 +83,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 				index += direction
 			row_region.append(index+(-direction))
 
-		return row_region[0]!=row_region[1], row_region, row_string
+		return row_region[0]!=row_region[1], main_indent_level, row_region, row_string
 
 	def get_line_text(self, view, index):
 		return view.substr(view.line(view.text_point(index, 0)))
@@ -90,14 +96,14 @@ class FalignCommand(sublime_plugin.TextCommand):
 		
 		self.align_words = [',','=',':']
 
-		re,row_region,row_string = self.get_smiller_lines(view, main_row)
+		re,indent_level,row_region,row_string = self.get_smiller_lines(view, main_row)
 		if not re: return
-		print("1","1","1")
+		
 		print("111","111","111")
+		print("1","1","1")
 
 		keys_len = len(row_string[str(main_row)][1])
 		for i in range(0,keys_len):
-			print("-----------------")
 			pos_max = 0
 			for key in row_string:
 				pos_max = max(pos_max, row_string[key][1][i][1])
@@ -111,9 +117,17 @@ class FalignCommand(sublime_plugin.TextCommand):
 					row_data[0] = line[:pos-1] + " "*(dis) + line[pos-1:]
 					for ii in range(i, keys_len):
 						row_string[key][1][ii][1] += dis
-				print(row_data[0])
 
-
+		string_list = [""]
+		for row in range(row_region[0],row_region[1]):
+			string_list.append(row_string[str(row)][0]+"\n")
+		string_list.append(row_string[str(row_region[1])][0])
+		
+		view.replace(
+			edit, 
+			sublime.Region(view.text_point(row_region[0],0),view.text_point(row_region[1]+1,0)-1), 
+			self.get_indent_text(view, indent_level).join(string_list)
+		)
 
 # This function removes the duplicates from a list and returns a new list without them
 # It also preserves the order of the list
