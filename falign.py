@@ -36,7 +36,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 	def get_line_key(self, view, line):
 		key_list = []
 		pos = 0
-		pattern = re.compile(r"[{0}]".format("".join(self.align_words)))
+		pattern = re.compile(r"\b{0}\b".format("|".join(self.align_words)))
 		while True:
 			match = pattern.search(line, pos)
 			if not match : break
@@ -96,7 +96,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 		# get current row
 		main_row = view.rowcol(view.lines(selection[0])[0].a)[0]
 		
-		self.align_words = [',','=',':']
+		self.align_words = [',','=',':','or']
 
 		re,indent_level,row_region,row_string = self.get_smiller_lines(view, main_row)
 
@@ -105,17 +105,18 @@ class FalignCommand(sublime_plugin.TextCommand):
 		keys_len = len(row_string[str(main_row)]["key"])
 		for i in range(0,keys_len):
 			pos_max = 0
-			for key in row_string:
-				pos_max = max(pos_max, row_string[key]["key"][i][1])
+			for row_index in row_string:
+				pos_max = max(pos_max, row_string[row_index]["key"][i][1])
 
-			for key in row_string:
-				line = row_string[key]["string"]
-				pos = row_string[key]["key"][i][1]
+			for row_index in row_string:
+				line = row_string[row_index]["string"]
+				key = row_string[row_index]["key"][i][0]
+				pos = row_string[row_index]["key"][i][1]
 				dis = pos_max - pos
 				if dis != 0:
-					row_string[key]["string"] = line[:pos-1] + " "*(dis) + line[pos-1:]
+					row_string[row_index]["string"] = line[:pos-len(key)] + " "*(dis) + line[pos-len(key):]
 					for ii in range(i, keys_len):
-						row_string[key]["key"][ii][1] += dis
+						row_string[row_index]["key"][ii][1] += dis
 			break
 			
 		string_list = [""]
