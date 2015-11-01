@@ -51,14 +51,8 @@ class FalignCommand(sublime_plugin.TextCommand):
 	def get_smiller_lines(self, view, main_row):
 		main_indent_level, main_string = self.get_indent_level(view, self.get_line_text(view, main_row))
 
-		pattern = re.compile(r"[^\w]")
-		match = pattern.search(main_string)
-		if not match: return False, None, None, None
-
 		main_keys = self.get_line_key(view, main_string)
 		if not main_keys: return False, None, None, None
-
-		main_head = main_string[:match.end(0)]
 
 		row_region =[]
 		row_string ={
@@ -69,8 +63,6 @@ class FalignCommand(sublime_plugin.TextCommand):
 			while True:
 				indent, string = self.get_indent_level(view, self.get_line_text(view, index))
 				if indent != main_indent_level : break
-				match = pattern.search(string)
-				if not match or string[:match.end(0)] != main_head: break
 				keys = self.get_line_key(view, string)
 				if not keys or not self.keys_equal(main_keys, keys): break
 				row_string[str(index)] = {"string":string, "key":keys}
@@ -81,9 +73,9 @@ class FalignCommand(sublime_plugin.TextCommand):
 
 		while True:
 			same = True
-			if len(keys) <= 0: break
+			if len(main_keys) <= 0: break
 			for k in row_string.values():
-				if k["key"][0][0] != keys[0][0] or k["key"][0][1] != keys[0][1]:
+				if k["key"][0][0] != main_keys[0][0] or k["key"][0][1] != main_keys[0][1]:
 					same = False
 					break
 			if same:
@@ -92,7 +84,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 			else:
 				break
 		
-		if len(keys) <= 0:
+		if len(main_keys) <= 0:
 			return False, None, None, None
 
 
