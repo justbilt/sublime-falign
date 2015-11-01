@@ -25,70 +25,125 @@ class FalignCommand(sublime_plugin.TextCommand):
 			index += 1
 		return int(space_count/tab_size),line_string
 
-	def keys_equal(self, keys1, keys2):
-		if len(keys1) != len(keys2):
-			return False
-		for i in range(len(keys1)):
-			if keys1[i][0] != keys2[i][0]:
-				return False
-		return True
-
 	def get_line_key(self, view, line):
 		key_list = []
 		pos = 0
-		pattern = re.compile(r"\b{0}\b".format("|".join(self.align_words)))
+		words = []
+		for v in self.align_words:
+			if len(v) > 1:
+				words.append('\s'+v+'\s')
+			else:
+				words.append(v)
+
+		pattern = re.compile(r"({0})".format("|".join(words)))
 		while True:
 			match = pattern.search(line, pos)
 			if not match : break
 			pos = match.end()
-			key_list.append([match.group(),pos])
+			key_list.append({"key":match.group(),"pos":pos})
 
 		return key_list if len(key_list) > 0 else None
 
 	def get_line_text(self, view, index):
 		return view.substr(view.line(view.text_point(index, 0)))
 
+	def format_smiller_lines(self, main_row, row_data_dict):
+		if len(row_data_dict) <= 0:
+			return False, None, None, None
+
+		main_key_list = row_data_dict[main_row]["key"]
+
+		# find first align index
+		align_index = 0
+		for main_key in main_key_list:
+			same = True
+			for row in row_data_dict:
+				try:
+					row_key = row_data_dict[row]["key"][align_index]
+					if row_key != main_key:
+						same = False
+				except IndexError:
+					row_data_dict[row] = False
+
+			if not same:
+				break
+			align_index += 1
+		
+		if align_index == len(main_key_list):
+			return False, None, None, None
+
+		align_keyword = main_key_list[align_index]["key"]
+		row_region = []
+		row_data = {
+			main_row:{"string":row_data_dict[main_row]["string"], "pos":main_key_list[align_index]["pos"]}
+		}
+		for direction in [-1,1]:
+			row_index = main_row + direction
+			while True:
+				if not row_index in row_data_dict:
+					break
+				data = row_data_dict[row_index]
+				if data:
+					row_data[row_index] = {
+						"string":data["string"],
+						"pos":data["key"][align_index]["pos"],
+					}
+				else:
+					break
+				row_index += direction
+			row_region.append(row_index+(-direction))
+
+		return True, row_region, align_keyword, row_data
+
+
 	def get_smiller_lines(self, view, main_row):
 		main_indent_level, main_string = self.get_indent_level(view, self.get_line_text(view, main_row))
 
 		main_keys = self.get_line_key(view, main_string)
-		if not main_keys: return False, None, None, None
+		if not main_keys:
+			return False, None, None, None, None
 
-		row_region =[]
-		row_string ={
-			str(main_row):{"string":main_string, "key":main_keys}
+		row_data ={
+			main_row:{"string":main_string, "key":main_keys}
 		}
 		for direction in [-1,1]:
-			index = main_row + direction
+			row_index = main_row + direction
 			while True:
-				indent, string = self.get_indent_level(view, self.get_line_text(view, index))
-				if indent != main_indent_level : break
-				keys = self.get_line_key(view, string)
-				if not keys or not self.keys_equal(main_keys, keys): break
-				row_string[str(index)] = {"string":string, "key":keys}
-				index += direction
-			row_region.append(index+(-direction))
-
-		if row_region[0] == row_region[1]: return False, None, None, None
-
-		while True:
-			same = True
-			if len(main_keys) <= 0: break
-			for k in row_string.values():
-				if k["key"][0][0] != main_keys[0][0] or k["key"][0][1] != main_keys[0][1]:
-					same = False
+				indent, string = self.get_indent_level(view, self.get_line_text(view, row_index))
+				if indent != main_indent_level :
 					break
-			if same:
-				for k in row_string.values():
-					k["key"].pop(0)
-			else:
-				break
+				keys = self.get_line_key(view, string)
+				if not keys or keys[0]["key"] != main_keys[0]["key"]:
+					break
+				row_data[row_index] = {"string":string, "key":keys}
+				row_index += direction
 		
-		if len(main_keys) <= 0:
-			return False, None, None, None
 
+		re, row_region, align_keyword, row_data = self.format_smiller_lines(main_row, row_data)
+		if not re:
+			return False, None, None, None, None
 
-		return True, main_indent_level, row_region, row_string
+		return True, main_indent_level, align_keyword, row_region, row_data
+
+	def align_lines(self, align_keyword, row_region, row_data):
+		pos_max = 0
+		for row_index in row_data:
+			pos_max = max(pos_max, row_data[row_index]["pos"])
+
+		for row_index in row_data:
+			line = row_data[row_index]["string"]
+			pos = row_data[row_index]["pos"]
+			dis = pos_max - pos
+			if dis != 0:
+				row_data[row_index]["string"] = line[:pos-len(align_keyword)] + " "*(dis) + line[pos-len(align_keyword):]
+			
+		aligned_lines = [""]
+		for row in range(row_region[0],row_region[1]):
+			aligned_lines.append(row_data[row]["string"]+"\n")
+		aligned_lines.append(row_data[row_region[1]]["string"])
+
+		return aligned_lines
+
 
 	def run(self, edit):
 		view = self.view
@@ -98,34 +153,14 @@ class FalignCommand(sublime_plugin.TextCommand):
 		
 		self.align_words = [',','=',':','or']
 
-		re,indent_level,row_region,row_string = self.get_smiller_lines(view, main_row)
+		re,indent_level,align_keyword,row_region,row_data = self.get_smiller_lines(view, main_row)
 
 		if not re: return
 
-		keys_len = len(row_string[str(main_row)]["key"])
-		for i in range(0,keys_len):
-			pos_max = 0
-			for row_index in row_string:
-				pos_max = max(pos_max, row_string[row_index]["key"][i][1])
+		line_list = self.align_lines(align_keyword, row_region, row_data)
 
-			for row_index in row_string:
-				line = row_string[row_index]["string"]
-				key = row_string[row_index]["key"][i][0]
-				pos = row_string[row_index]["key"][i][1]
-				dis = pos_max - pos
-				if dis != 0:
-					row_string[row_index]["string"] = line[:pos-len(key)] + " "*(dis) + line[pos-len(key):]
-					for ii in range(i, keys_len):
-						row_string[row_index]["key"][ii][1] += dis
-			break
-			
-		string_list = [""]
-		for row in range(row_region[0],row_region[1]):
-			string_list.append(row_string[str(row)]["string"]+"\n")
-		string_list.append(row_string[str(row_region[1])]["string"])
-		
 		view.replace(
 			edit, 
 			sublime.Region(view.text_point(row_region[0],0),view.text_point(row_region[1]+1,0)-1), 
-			self.get_indent_text(view, indent_level).join(string_list)
+			self.get_indent_text(view, indent_level).join(line_list)
 		)
