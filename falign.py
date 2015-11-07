@@ -2,6 +2,8 @@ import sublime
 import sublime_plugin
 import re
 
+def Settings():
+	return sublime.load_settings("FAlign.sublime-settings")
 
 class FalignCommand(sublime_plugin.TextCommand):
 	def get_indent_text(self, view, indent):
@@ -30,12 +32,12 @@ class FalignCommand(sublime_plugin.TextCommand):
 		pos = 0
 		words = []
 		pattern = re.compile(r"\w")
-		for v in self.align_words:
-			if pattern.search(v):
-				words.append('[^\w]'+v+'[^\w]')
-			else:
-				words.append(v)
-
+		for v in self.fa_alignment_chars:
+			for vv in v["prefixes"]:
+				if pattern.search(vv):
+					words.append('[^\w]'+vv+'[^\w]')
+				else:
+					words.append(vv)
 		pattern = re.compile(r"({0})".format("|".join(words)))
 		while True:
 			match = pattern.search(line, pos)
@@ -152,7 +154,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 		# get current row
 		main_row = view.rowcol(view.lines(selection[0])[0].a)[0]
 		
-		self.align_words = [',','=',':','or']
+		self.fa_alignment_chars = Settings().get("fa_alignment_chars",[])
 
 		re,indent_level,align_keyword,row_region,row_data = self.get_smiller_lines(view, main_row)
 

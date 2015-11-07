@@ -1,0 +1,16 @@
+{
+    "fa_alignment_chars": [
+		{
+			"alignment":   "right",
+			"left_space":  true,
+			"right_space": true,
+			"prefixes":    ["=", "or"]
+		},
+		{
+			"alignment":   "left",
+			"left_space":  false,
+			"right_space": true,
+			"prefixes":    [","]
+		}
+	]
+}
