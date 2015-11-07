@@ -169,7 +169,10 @@ class FalignCommand(sublime_plugin.TextCommand):
 			pos = new_smiller_lines_data[row_index]["pos"]
 			dis = pos_max - pos
 			if dis != 0:
-				new_smiller_lines_data[row_index]["text"] = line[:pos-len(align_keyword)] + " "*(dis) + line[pos-len(align_keyword):]
+				if self.fa_alignment_chars[keyword]["alignment"] == "left":
+					new_smiller_lines_data[row_index]["text"] = line[:pos] + " "*(dis) + line[pos:]
+				else:
+					new_smiller_lines_data[row_index]["text"] = line[:pos-len(align_keyword)] + " "*(dis) + line[pos-len(align_keyword):]
 		
 		# 拼接行
 		aligned_lines = [""]
