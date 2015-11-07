@@ -136,7 +136,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 			pos = row_data[row_index]["pos"]
 			dis = pos_max - pos
 			if dis != 0:
-				row_data[row_index]["string"] = line[:pos-len(align_keyword)+1] + " "*(dis) + line[pos-len(align_keyword)+1:]
+				row_data[row_index]["string"] = line[:pos-len(align_keyword)] + " "*(dis) + line[pos-len(align_keyword):]
 			
 		aligned_lines = [""]
 		for row in range(row_region[0],row_region[1]):
