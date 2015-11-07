@@ -27,6 +27,14 @@ class FalignCommand(sublime_plugin.TextCommand):
 			index += 1
 		return int(space_count/tab_size),line_string
 
+	def get_key_word(self, key):
+		for v in self.fa_alignment_chars:
+			for vv in v["prefixes"]:
+				if vv == key:
+					return (" " if v["left_space"] else "") + key + (" " if v["right_space"] else "")
+
+		assert False, key
+
 	def get_line_key(self, view, line):
 		key_list = []
 		pos = 0
@@ -35,7 +43,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 		for v in self.fa_alignment_chars:
 			for vv in v["prefixes"]:
 				if pattern.search(vv):
-					words.append('[^\w]'+vv+'[^\w]')
+					words.append('(?<=\W)'+vv+'(?=\W)')
 				else:
 					words.append(vv)
 		pattern = re.compile(r"({0})".format("|".join(words)))
@@ -43,9 +51,21 @@ class FalignCommand(sublime_plugin.TextCommand):
 			match = pattern.search(line, pos)
 			if not match : break
 			pos = match.end()
-			key_list.append({"key":match.group(),"pos":pos})
+			word = match.group()
+			region = []
+			for ids in [range(pos-len(word)-1,0,-1),range(pos,len(line))]:
+				for i in ids:
+					if line[i] != " ":
+						region.append(i)
+						break
+			word = self.get_key_word(word)
+			line = line[:region[0]+1]+word+line[region[1]:]
+			pos = region[0] + len(word) +1
+			print(line[pos:])
 
-		return key_list if len(key_list) > 0 else None
+			key_list.append({"key":word,"pos":pos})
+
+		return key_list if len(key_list) > 0 else None, line
 
 	def get_line_text(self, view, index):
 		return view.substr(view.line(view.text_point(index, 0)))
@@ -102,7 +122,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 	def get_smiller_lines(self, view, main_row):
 		main_indent_level, main_string = self.get_indent_level(view, self.get_line_text(view, main_row))
 
-		main_keys = self.get_line_key(view, main_string)
+		main_keys, main_string = self.get_line_key(view, main_string)
 		if not main_keys:
 			return False, None, None, None, None
 
@@ -115,7 +135,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 				indent, string = self.get_indent_level(view, self.get_line_text(view, row_index))
 				if indent != main_indent_level :
 					break
-				keys = self.get_line_key(view, string)
+				keys, string = self.get_line_key(view, string)
 				if not keys or keys[0]["key"] != main_keys[0]["key"]:
 					break
 				row_data[row_index] = {"string":string, "key":keys}
@@ -155,6 +175,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 		main_row = view.rowcol(view.lines(selection[0])[0].a)[0]
 		
 		self.fa_alignment_chars = Settings().get("fa_alignment_chars",[])
+		
 
 		re,indent_level,align_keyword,row_region,row_data = self.get_smiller_lines(view, main_row)
 
