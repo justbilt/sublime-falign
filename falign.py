@@ -28,12 +28,7 @@ class FalignCommand(sublime_plugin.TextCommand):
 		return int(space_count/tab_size),line_string
 
 	def get_key_word(self, key):
-		for v in self.fa_alignment_chars:
-			for vv in v["prefixes"]:
-				if vv == key:
-					return (" " if v["left_space"] else "") + key + (" " if v["right_space"] else "")
-
-		assert False, key
+		return (" " if self.fa_alignment_chars[key]["left_space"] else "") + key + (" " if self.fa_alignment_chars[key]["right_space"] else "")
 
 	def get_line_key(self, view, line):
 		key_list = []
@@ -41,11 +36,10 @@ class FalignCommand(sublime_plugin.TextCommand):
 		words = []
 		pattern = re.compile(r"\w")
 		for v in self.fa_alignment_chars:
-			for vv in v["prefixes"]:
-				if pattern.search(vv):
-					words.append('(?<=\W)'+vv+'(?=\W)')
-				else:
-					words.append(vv)
+			if pattern.search(v):
+				words.append('(?<=\W)'+v+'(?=\W)')
+			else:
+				words.append(v)
 		pattern = re.compile(r"({0})".format("|".join(words)))
 		while True:
 			match = pattern.search(line, pos)
@@ -61,7 +55,6 @@ class FalignCommand(sublime_plugin.TextCommand):
 			word = self.get_key_word(word)
 			line = line[:region[0]+1]+word+line[region[1]:]
 			pos = region[0] + len(word) +1
-			print(line[pos:])
 
 			key_list.append({"key":word,"pos":pos})
 
@@ -174,8 +167,16 @@ class FalignCommand(sublime_plugin.TextCommand):
 		# get current row
 		main_row = view.rowcol(view.lines(selection[0])[0].a)[0]
 		
-		self.fa_alignment_chars = Settings().get("fa_alignment_chars",[])
-		
+		fa_alignment_chars = Settings().get("fa_alignment_chars",[])
+		self.fa_alignment_chars = {}
+		for v in fa_alignment_chars:
+			for vv in v["prefixes"]:
+				self.fa_alignment_chars[vv] = {
+					"alignment": v["alignment"],
+					"left_space": v["left_space"],
+					"right_space": v["right_space"],
+				}
+
 
 		re,indent_level,align_keyword,row_region,row_data = self.get_smiller_lines(view, main_row)
 
