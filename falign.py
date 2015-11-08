@@ -79,9 +79,10 @@ class FalignCommand(sublime_plugin.TextCommand):
 
 		# 相似行的数据
 		smiller_lines_data ={}
+		line_count, _ = view.rowcol(view.size())
 		for direction in [-1,1]:
 			row_index = main_row + direction
-			while True:
+			while row_index >= 0 and row_index < line_count + 1:
 				indent, keys, string = self.get_line_feature(self.get_line_text(view, row_index))
 				if indent != main_indent_level :
 					break
@@ -149,12 +150,14 @@ class FalignCommand(sublime_plugin.TextCommand):
 		for row_id in new_smiller_lines_data:
 			text = new_smiller_lines_data[row_id]["text"]
 			pos = new_smiller_lines_data[row_id]["pos"]
-			region = []
+			region = [0,len(text)]
+			index = 0
 			for ids in [range(pos-len(keyword)-1,0,-1),range(pos,len(text))]:
 				for i in ids:
 					if text[i] != " ":
-						region.append(i)
+						region[index] = i
 						break
+				index = index + 1
 			text = text[:region[0]+1]+align_keyword+text[region[1]:]
 			pos = region[0] + len(align_keyword) +1
 
