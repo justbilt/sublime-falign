@@ -188,6 +188,9 @@ class FalignCommand(sublime_plugin.TextCommand):
 		# 替换文本
 		view.replace(
 			edit, 
-			sublime.Region(view.text_point(row_region[0],0),view.text_point(row_region[1]+1,0)-1), 
+			sublime.Region(
+				view.text_point(row_region[0],0),
+				view.line(view.text_point(row_region[1],0)).b,
+			),
 			self.get_indent_text(view, main_indent_level).join(aligned_lines)
 		)
