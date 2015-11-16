@@ -6,7 +6,7 @@ A alignment plugin for Sublime Text 2 and 3.
 
 To install this plugin, you have two options:
 
-1. If you have Package Control installed, simply search for `ForceAlign` to install.
+1. If you have Package Control installed, simply search for `FAlign` to install.
 
 2. Clone source code to Sublime Text packages folder.
 
