@@ -30,6 +30,9 @@ class FalignCommand(sublime_plugin.TextCommand):
 		# 缩进层级
 		indent_level = int(space_count/self.tab_size)
 
+		# 替换行中的 tab
+		line_string = line_string.replace("\t", " "*self.tab_size)
+
 		# 关键字列表
 		key_list = []
 		pos = 0
